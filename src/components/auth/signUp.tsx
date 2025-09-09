@@ -1,8 +1,15 @@
 "use client";
 import { useForm } from "react-hook-form";
+import { useState } from "react";
 import Link from "next/link";
 import CustomInput from "../utils/customInput";
 import { SignupData } from "./types/formTypes";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@apollo/client";
+import { SIGNUP_MUTATION } from "@/app/api/mutations/auth";
+import AlertModal from "../utils/alertModal";
+import Loader from "../utils/loader";
+import toast from "react-hot-toast";
 
 export default function SignupForm() {
   const {
@@ -12,19 +19,35 @@ export default function SignupForm() {
     formState: { errors },
   } = useForm<SignupData>();
 
+  const [createAccount, { loading }] = useMutation(SIGNUP_MUTATION);
+  const router = useRouter();
+  const [successModal, setSuccessModal] = useState(false);
+  const [signupError, setSignupError] = useState("");
+  const [errorModal, setErrorModal] = useState(false);
+  const [username, setUsername] = useState("")
+
   const onSubmit = async (data: SignupData) => {
-    try {
-      const res = await fetch("http://localhost:8000/api/signup/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Signup failed");
-      alert("Account created successfully!");
-    } catch (err) {
-      console.error(err);
-      alert("Error signing up");
-    }
+    const { username, email, password } = data;
+
+    await createAccount({
+      variables: {
+        username, email, password
+      },
+    }).then(({ data: signupRes }) => {
+      console.log(signupRes);
+      const { signup: { message } } = signupRes;
+      setUsername(username);
+      toast.success(message);
+      setSuccessModal(true);
+      setTimeout(() => {
+        router.push("/login");
+      }, 3000);
+    }).catch((err) => {
+      console.log(err);
+      setSignupError(err?.message); 
+      setErrorModal(true);
+      toast.error(err?.message);
+    });
   };
 
   return (
@@ -65,8 +88,11 @@ export default function SignupForm() {
         <button
           type="submit"
           className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition cursor-pointer"
+          disabled={loading}
         >
-          Sign Up
+          {loading ? <Loader />
+            : "Sign Up"
+            }
         </button>
 
         <p className="mt-4 text-center text-gray-600">
@@ -77,6 +103,22 @@ export default function SignupForm() {
           </Link>
         </p>
       </form>
+
+      <AlertModal
+        isOpen={successModal}
+        title="Signup Successful"
+        subtitle={`Thank you ${username} for signing up!`}
+        type="success"
+        onClose={() => setSuccessModal(false)}
+      />
+
+      <AlertModal
+        isOpen={errorModal}
+        title="Error Signup"
+        subtitle={signupError}
+        type="error"
+        onClose={() => setErrorModal(false)}
+      />
     </div>
   );
 }
