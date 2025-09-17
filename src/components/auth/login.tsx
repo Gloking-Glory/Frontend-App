@@ -26,18 +26,19 @@ export default function LoginForm() {
   const [login, { loading }] = useMutation(LOGIN_MUTATION);
 
   const onSubmit = async (data: LoginData) => {
-    const { username, password } = data;
-    setUsername(username);
+    const { email, password } = data;
     await login({
       variables: {
-        username, password
+        email, password
       } 
     }).then(({ data: loginRes }) => {
       console.log(loginRes);
-      const { login: { token } } = loginRes;
-      setSuccessModal(true);
+      const { login: { token, user } } = loginRes;
+      const { username } = user;
       localStorage.setItem("token", token);
-        // router.push("/flyCards");
+      setSuccessModal(true);
+      setUsername(username);
+      router.push("/students");
     }).catch((err) => {
       console.log(err);
       setLoginError(err?.message); 
@@ -54,16 +55,11 @@ export default function LoginForm() {
       >
         <h2 className="text-2xl font-bold mb-4 text-center text-blue-600">Login</h2>
 
-        {/* <CustomInput
+        <CustomInput
           label="Email"
           type="email"
           error={errors.email}
           {...register("email", { required: "Email is required" })}
-        /> */}
-        <CustomInput
-          label="Username"
-          error={errors.username}
-          {...register("username", { required: "Username is required" })}
         />
         <CustomInput
           label="Password"
